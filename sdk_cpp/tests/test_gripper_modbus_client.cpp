@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <chrono>
 #include <cstddef>
 #include <cstring>
@@ -219,6 +221,22 @@ TEST(TestGripperModbusClient, serial_failure_is_logged_before_it_becomes_a_drive
 
    EXPECT_THROW((void)client.readStatus(), DriverException);
    EXPECT_TRUE(logger->contains(ThrowingSerial::kFailure));
+}
+
+TEST(TestGripperModbusClient, repeated_serial_failures_are_logged_once_per_second)
+{
+   // A lost link fails every transaction of every exchange cycle.
+   auto logger = std::make_shared<CollectingLogger>();
+   GripperModbusClient client(std::make_unique<ThrowingSerial>(), kSlaveAddress, logger);
+
+   for(int attempt = 0; attempt < 10; ++attempt)
+   {
+      EXPECT_THROW((void)client.readStatus(), DriverException);
+   }
+   const auto failures = std::count_if(logger->lines.begin(), logger->lines.end(), [](const auto& line) {
+      return line.second.find(ThrowingSerial::kFailure) != std::string::npos;
+   });
+   EXPECT_EQ(failures, 1);
 }
 
 TEST(TestGripperModbusClient, config_ctor_delivers_serial_logs_to_the_injected_logger)

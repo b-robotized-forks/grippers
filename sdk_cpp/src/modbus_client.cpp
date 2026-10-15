@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <exception>
 #include <string>
 #include <utility>
@@ -22,6 +23,7 @@
 #include <Robotiq/detail/byte_packing.hpp>
 #include <Robotiq/detail/default_logger.hpp>
 #include <Robotiq/detail/modbus_constants.hpp>
+#include <Robotiq/detail/throttle.hpp>
 #include <Robotiq/gripper/serial.hpp>
 
 namespace Robotiq {
@@ -38,6 +40,9 @@ struct CallbackContext
 {
    Serial* serial = nullptr;
    Logger* logger = nullptr;
+   // A lost link fails every read and write of every exchange cycle; one line
+   // per second is enough to say so.
+   detail::Throttle failureLogThrottle{std::chrono::milliseconds(1000)};
 };
 
 // The FTDI latency timer is 16 ms by default on many platforms.
@@ -73,12 +78,14 @@ int32_t readSerial(uint8_t* buf, uint16_t count, int32_t byteTimeoutMs, void* ar
    }
    catch(const std::exception& e)
    {
-      context->logger->log(Logger::Level::Error, std::string("serial read failed: ") + e.what());
+      context->failureLogThrottle.executeIfAllowed(
+         [&] { context->logger->log(Logger::Level::Error, std::string("serial read failed: ") + e.what()); });
       return -1;
    }
    catch(...)
    {
-      context->logger->log(Logger::Level::Error, "serial read failed with an unknown exception");
+      context->failureLogThrottle.executeIfAllowed(
+         [&] { context->logger->log(Logger::Level::Error, "serial read failed with an unknown exception"); });
       return -1;
    }
 }
@@ -93,12 +100,14 @@ int32_t writeSerial(const uint8_t* buf, uint16_t count, int32_t /*byteTimeoutMs*
    }
    catch(const std::exception& e)
    {
-      context->logger->log(Logger::Level::Error, std::string("serial write failed: ") + e.what());
+      context->failureLogThrottle.executeIfAllowed(
+         [&] { context->logger->log(Logger::Level::Error, std::string("serial write failed: ") + e.what()); });
       return -1;
    }
    catch(...)
    {
-      context->logger->log(Logger::Level::Error, "serial write failed with an unknown exception");
+      context->failureLogThrottle.executeIfAllowed(
+         [&] { context->logger->log(Logger::Level::Error, "serial write failed with an unknown exception"); });
       return -1;
    }
 }
