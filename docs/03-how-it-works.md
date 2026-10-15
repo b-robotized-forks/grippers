@@ -511,6 +511,27 @@ uint8_t currentPosition = gripper.getStatus().position;
 std::cout << "Current position : " << static_cast<int>(currentPosition) << std::endl;
 ```
 
+## Over TCP
+
+A gripper on a robot's tool RS-485 interface can be reached over the network when the robot forwards the bus to a TCP port, e.g. the UR Tool Communication Forwarder on a Universal Robots arm (port 54321).
+Set `ConnectionConfig::tcp` instead of the serial port, then construct the `Gripper` with it as usual:
+
+<!-- snippet: snippets.cpp configure-tcp-connection -->
+```cpp
+Robotiq::ConnectionConfig config;
+config.tcp = Robotiq::TcpConfig{};
+config.tcp->host = "192.168.1.100"; // robot IP address; no DNS lookup
+config.tcp->port = 54321; // UR Tool Communication Forwarder
+```
+
+The frames keep their Modbus RTU form with CRC; this is not Modbus TCP.
+Baud rate, parity and stop bits are set on the robot, not in `TcpConfig`.
+
+When the connection is lost, the link goes to `Faulted` as with an unplugged gripper.
+The next exchange connects again, at most once per `TcpConfig::reconnectInterval`, and the link returns to `Operational` on the first successful exchange.
+
+`TcpSerial` is built under the `GRIPPERS_BUILD_TCP_SERIAL` CMake option (hosted UNIX targets only).
+
 ## Without a gripper
 
 `makeFakeGripper()` returns a `Gripper` driving a fake device instead of

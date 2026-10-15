@@ -275,6 +275,7 @@ in detail).
 | `GRIPPERS_HOSTED` | `ON` | Whether the target has a hosted C++ runtime (`std::thread`, `iostream`). `ON` compiles the `std::thread`-backed `Platform` (`makeDefaultPlatform()`) and the stderr default logger, and links `Threads::Threads`. |
 | `GRIPPERS_BUILD_FAKE` | follows `GRIPPERS_HOSTED` | Builds [`makeFakeGripper()`](03-how-it-works.md#without-a-gripper) and the fake device it drives. ~30 KB; only useful to hosted consumers, since the fake device needs the threaded exchange loop to run. |
 | `GRIPPERS_BUILD_DEFAULT_SERIAL` | follows `GRIPPERS_HOSTED` | Builds the libserialport-backed `DefaultSerial` and the `ConnectionConfig`-based constructors that use it. |
+| `GRIPPERS_BUILD_TCP_SERIAL` | `ON` on hosted UNIX targets | Builds the POSIX socket `TcpSerial` for [raw Modbus RTU over TCP](03-how-it-works.md#over-tcp). Used by the `ConnectionConfig`-based constructors when `ConnectionConfig::tcp` is set. |
 
 "Top-level" means configuring `sdk_cpp` directly
 (`cmake -S sdk_cpp -B build ...`) rather than through

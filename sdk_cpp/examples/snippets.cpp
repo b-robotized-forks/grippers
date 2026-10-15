@@ -40,6 +40,16 @@ void configureConnection()
    //! [configure-connection]
 }
 
+void configureTcpConnection()
+{
+   //! [configure-tcp-connection]
+   Robotiq::ConnectionConfig config;
+   config.tcp = Robotiq::TcpConfig{};
+   config.tcp->host = "192.168.1.100"; // robot IP address; no DNS lookup
+   config.tcp->port = 54321; // UR Tool Communication Forwarder
+   //! [configure-tcp-connection]
+}
+
 void commandActionBits()
 {
    //! [command-action-bits]
