@@ -44,9 +44,18 @@ option(GRIPPERS_BUILD_FAKE "Build the fake gripper device" ${GRIPPERS_HOSTED})
 # that inject their own Serial implementation; this drops the libserialport
 # dependency and the ConnectionConfig-based constructors that build a DefaultSerial.
 option(GRIPPERS_BUILD_DEFAULT_SERIAL "Build the libserialport-backed DefaultSerial" ${GRIPPERS_HOSTED})
+if(GRIPPERS_HOSTED AND UNIX)
+  set(_grippers_tcp_serial_default ON)
+else()
+  set(_grippers_tcp_serial_default OFF)
+endif()
+option(GRIPPERS_BUILD_TCP_SERIAL "Build the POSIX socket TcpSerial (raw Modbus RTU over TCP)" ${_grippers_tcp_serial_default})
 
 if(GRIPPERS_BUILD_DEFAULT_SERIAL AND NOT GRIPPERS_HOSTED)
   message(FATAL_ERROR "GRIPPERS_BUILD_DEFAULT_SERIAL needs a hosted runtime (libserialport is a desktop library); set it OFF for freestanding targets")
+endif()
+if(GRIPPERS_BUILD_TCP_SERIAL AND NOT (GRIPPERS_HOSTED AND UNIX))
+  message(FATAL_ERROR "GRIPPERS_BUILD_TCP_SERIAL needs a hosted POSIX runtime (it uses BSD sockets); set it OFF for this target")
 endif()
 if(GRIPPERS_BUILD_FAKE AND NOT GRIPPERS_HOSTED)
   message(FATAL_ERROR "GRIPPERS_BUILD_FAKE needs a hosted runtime (the fake gripper serves the threaded exchange loop)")
@@ -97,7 +106,8 @@ target_include_directories(grippers_usage
 # freestanding build gets a compile error, not an undefined symbol.
 target_compile_definitions(grippers_usage INTERFACE
   GRIPPERS_HOSTED=$<BOOL:${GRIPPERS_HOSTED}>
-  GRIPPERS_BUILD_DEFAULT_SERIAL=$<BOOL:${GRIPPERS_BUILD_DEFAULT_SERIAL}>)
+  GRIPPERS_BUILD_DEFAULT_SERIAL=$<BOOL:${GRIPPERS_BUILD_DEFAULT_SERIAL}>
+  GRIPPERS_BUILD_TCP_SERIAL=$<BOOL:${GRIPPERS_BUILD_TCP_SERIAL}>)
 
 if(GRIPPERS_HOSTED)
   find_package(Threads REQUIRED)

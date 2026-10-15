@@ -17,6 +17,7 @@ target_sources(grippers_objects PRIVATE
   gripper/platform.hpp
   gripper/serial.hpp
   gripper/serial_config.hpp
+  gripper/tcp_config.hpp
   gripper/serial_io_exception.hpp
   gripper/modbus_client.hpp
   detail/config.hpp
@@ -27,6 +28,7 @@ target_sources(grippers_objects PRIVATE
   detail/throttle.hpp
   detail/default_logger.hpp
   detail/default_serial.hpp
+  detail/tcp_serial.hpp
   # Shims for the v1.0.0 paths; removed in the next major.
   gripper/register_map.hpp
   gripper/named_bit_array.hpp

@@ -16,6 +16,10 @@
 #include <Robotiq/gripper/logger.hpp>
 #include <Robotiq/detail/default_logger.hpp>
 #include <Robotiq/detail/default_serial.hpp>
+#if GRIPPERS_BUILD_TCP_SERIAL
+#include <Robotiq/detail/tcp_serial.hpp>
+#endif
+#include <Robotiq/gripper/driver_exception.hpp>
 #include <Robotiq/gripper/modbus_client.hpp>
 #include <Robotiq/gripper/serial.hpp>
 
@@ -34,6 +38,17 @@ std::unique_ptr<Serial> makeSerial(const ConnectionConfig& config, const std::sh
    // Logged before the link is opened, so a connection that never succeeds
    // still says what it was attempting.
    const std::shared_ptr<Logger> sink = logger ? logger : detail::makeDefaultLogger();
+   if(config.tcp)
+   {
+#if GRIPPERS_BUILD_TCP_SERIAL
+      sink->log(Logger::Level::Info,
+                "connecting to a gripper on tcp://" + config.tcp->host + ":" + std::to_string(config.tcp->port)
+                   + ", Modbus slave address " + toHex(config.modbusSlaveAddress));
+      return std::make_unique<detail::TcpSerial>(*config.tcp, logger);
+#else
+      throw DriverException("ConnectionConfig::tcp is set, but the SDK was built without GRIPPERS_BUILD_TCP_SERIAL");
+#endif
+   }
    sink->log(Logger::Level::Info,
              "connecting to a gripper on " + config.serial.port + " at " + std::to_string(config.serial.baudrate)
                 + " bps, Modbus slave address " + toHex(config.modbusSlaveAddress));

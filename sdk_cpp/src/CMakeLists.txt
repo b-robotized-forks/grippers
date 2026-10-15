@@ -47,3 +47,10 @@ if(GRIPPERS_BUILD_DEFAULT_SERIAL)
     detail/default_serial.cpp
   )
 endif()
+
+# POSIX socket transport: hosted UNIX targets (see GRIPPERS_BUILD_TCP_SERIAL).
+if(GRIPPERS_BUILD_TCP_SERIAL)
+  target_sources(grippers_objects PRIVATE
+    detail/tcp_serial.cpp
+  )
+endif()

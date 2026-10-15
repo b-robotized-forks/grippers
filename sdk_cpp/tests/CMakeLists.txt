@@ -44,6 +44,12 @@ if(GRIPPERS_BUILD_FAKE)
     test_make_fake_gripper.cpp
   )
 endif()
+# TcpSerial against loopback peers, including the fake device behind a socket.
+if(GRIPPERS_BUILD_TCP_SERIAL AND GRIPPERS_BUILD_FAKE)
+  target_sources(grippers_tests PRIVATE
+    test_tcp_serial.cpp
+  )
+endif()
 target_link_libraries(grippers_tests PRIVATE
   grippers_sdk
   grippers_warnings

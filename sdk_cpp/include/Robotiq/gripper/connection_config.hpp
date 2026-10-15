@@ -5,8 +5,10 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 #include <Robotiq/gripper/serial_config.hpp>
+#include <Robotiq/gripper/tcp_config.hpp>
 
 namespace Robotiq {
 
@@ -41,5 +43,11 @@ struct ConnectionConfig
    //! negative rate, or NaN, is a caller bug: the Gripper constructor
    //! throws DriverException for it.
    double connectionFrequency = 100.0; // Hz
+
+   //! \brief Raw Modbus RTU over TCP link parameters.
+   //!
+   //! When set, the gripper is reached through a TCP-to-RS-485 bridge and
+   //! `serial` is ignored. Needs a build with GRIPPERS_BUILD_TCP_SERIAL.
+   std::optional<TcpConfig> tcp;
 };
 } // namespace Robotiq
