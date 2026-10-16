@@ -29,6 +29,7 @@ target_sources(grippers_objects PRIVATE
   detail/default_logger.hpp
   detail/default_serial.hpp
   detail/tcp_serial.hpp
+  detail/pty_serial.hpp
   # Shims for the v1.0.0 paths; removed in the next major.
   gripper/register_map.hpp
   gripper/named_bit_array.hpp

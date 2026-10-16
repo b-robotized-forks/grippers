@@ -12,10 +12,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <cerrno>
 #include <cstring>
-#include <limits>
 #include <string>
 #include <utility>
 
@@ -23,15 +21,9 @@
 #include <Robotiq/gripper/logger.hpp>
 #include <Robotiq/gripper/serial_io_exception.hpp>
 
+#include "posix_stream.hpp"
+
 namespace Robotiq::detail {
-namespace {
-// Linux reports a broken pipe through MSG_NOSIGNAL; macOS through SO_NOSIGPIPE.
-#ifdef MSG_NOSIGNAL
-constexpr int kSendFlags = MSG_NOSIGNAL;
-#else
-constexpr int kSendFlags = 0;
-#endif
-} // namespace
 
 TcpSerial::TcpSerial(TcpConfig config, std::shared_ptr<Logger> logger)
    : _config(std::move(config))
@@ -100,7 +92,16 @@ void TcpSerial::open()
       {
          fail(std::string("connecting failed: ") + std::strerror(errno));
       }
-      if(!waitReady(POLLOUT, deadline))
+      bool connected = false;
+      try
+      {
+         connected = posix::waitReady(_socket, POLLOUT, deadline);
+      }
+      catch(const posix::StreamError& e)
+      {
+         fail(std::string("connecting failed: ") + e.what());
+      }
+      if(!connected)
       {
          fail("connecting timed out");
       }
@@ -141,37 +142,14 @@ std::vector<uint8_t> TcpSerial::read(size_t size, std::chrono::milliseconds time
       throw SerialIOException("read called on a closed connection to " + endpoint());
    }
 
-   std::vector<uint8_t> data(size);
-   size_t received = 0;
-   const auto deadline = Clock::now() + timeout;
-   while(received < size)
+   try
    {
-      const ssize_t count = ::recv(_socket, data.data() + received, size - received, 0);
-      if(count > 0)
-      {
-         received += static_cast<size_t>(count);
-         continue;
-      }
-      if(count == 0)
-      {
-         fail("the peer closed the connection");
-      }
-      if(errno == EINTR)
-      {
-         continue;
-      }
-      if(errno != EAGAIN && errno != EWOULDBLOCK)
-      {
-         fail(std::string("reading failed: ") + std::strerror(errno));
-      }
-      // A short read is how a timeout is reported; the link stays open.
-      if(timeout.count() == 0 || !waitReady(POLLIN, deadline))
-      {
-         break;
-      }
+      return posix::readUpTo(_socket, posix::Kind::Socket, size, timeout);
    }
-   data.resize(received);
-   return data;
+   catch(const posix::StreamError& e)
+   {
+      fail(e.what());
+   }
 }
 
 void TcpSerial::write(const std::vector<uint8_t>& data)
@@ -186,28 +164,13 @@ void TcpSerial::write(const std::vector<uint8_t>& data)
       open();
    }
 
-   size_t sent = 0;
-   const auto deadline = Clock::now() + _config.timeout;
-   while(sent < data.size())
+   try
    {
-      const ssize_t count = ::send(_socket, data.data() + sent, data.size() - sent, kSendFlags);
-      if(count > 0)
-      {
-         sent += static_cast<size_t>(count);
-         continue;
-      }
-      if(count < 0 && errno == EINTR)
-      {
-         continue;
-      }
-      if(count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
-      {
-         fail(std::string("writing failed: ") + std::strerror(errno));
-      }
-      if(!waitReady(POLLOUT, deadline))
-      {
-         fail("writing timed out after " + std::to_string(sent) + " of " + std::to_string(data.size()) + " bytes");
-      }
+      posix::writeAll(_socket, posix::Kind::Socket, data, _config.timeout);
+   }
+   catch(const posix::StreamError& e)
+   {
+      fail(e.what());
    }
 }
 
@@ -219,41 +182,6 @@ std::chrono::milliseconds TcpSerial::getTimeout() const
 const TcpConfig& TcpSerial::getConfig() const
 {
    return _config;
-}
-
-bool TcpSerial::waitReady(short events, Clock::time_point deadline)
-{
-   while(true)
-   {
-      const auto remaining = deadline - Clock::now();
-      if(remaining <= Clock::duration::zero())
-      {
-         return false;
-      }
-      // Round up, so a sub-millisecond rest does not turn into a busy loop.
-      const auto remainingMs = std::chrono::ceil<std::chrono::milliseconds>(remaining).count();
-      const int waitMs = static_cast<int>(std::min<int64_t>(remainingMs, std::numeric_limits<int>::max()));
-      pollfd descriptor{_socket, events, 0};
-      const int result = ::poll(&descriptor, 1, waitMs);
-      if(result < 0)
-      {
-         if(errno == EINTR)
-         {
-            continue;
-         }
-         fail(std::string("waiting on the socket failed: ") + std::strerror(errno));
-      }
-      if(result == 0)
-      {
-         continue;
-      }
-      // Buffered bytes stay readable after the peer has closed its end.
-      if((descriptor.revents & events) != 0)
-      {
-         return true;
-      }
-      fail("the connection was closed or reported an error");
-   }
 }
 
 void TcpSerial::fail(const std::string& message)

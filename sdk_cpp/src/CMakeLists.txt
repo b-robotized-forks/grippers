@@ -51,6 +51,8 @@ endif()
 # POSIX socket transport: hosted UNIX targets (see GRIPPERS_BUILD_TCP_SERIAL).
 if(GRIPPERS_BUILD_TCP_SERIAL)
   target_sources(grippers_objects PRIVATE
+    detail/posix_stream.cpp
+    detail/pty_serial.cpp
     detail/tcp_serial.cpp
   )
 endif()

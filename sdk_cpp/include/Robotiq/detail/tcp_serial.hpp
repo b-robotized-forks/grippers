@@ -57,8 +57,6 @@ public:
 private:
    using Clock = std::chrono::steady_clock;
 
-   // Waits until the socket is ready for \p events; false on timeout.
-   [[nodiscard]] bool waitReady(short events, Clock::time_point deadline);
    // Closes the socket and throws SerialIOException.
    [[noreturn]] void fail(const std::string& message);
    [[nodiscard]] std::string endpoint() const;
